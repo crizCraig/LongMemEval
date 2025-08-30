@@ -50,26 +50,33 @@ def check_args(args):
 
 def prepare_prompt(entry, retriever_type, topk_context: int, useronly: bool, history_format: str, cot: bool, tokenizer, tokenizer_backend, max_retrieval_length, merge_key_expansion_into_value, con=False, con_client=None, con_model=None):    
     if retriever_type == 'no-retrieval':
-        answer_prompt_template = '{}'
+        session_prompt_template = ''
+        question_prompt_template = '{}'
         if cot:
-            answer_prompt_template += 'Answer step by step.'
+            question_prompt_template += 'Answer step by step.'
             
     else:
         if merge_key_expansion_into_value is None or merge_key_expansion_into_value == 'none':
             if cot:
-                answer_prompt_template = 'I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}\n\nCurrent Date: {}\nQuestion: {}\nAnswer (step by step):'
+                session_prompt_template = 'I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}'
+                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer (step by step):'
             else:
-                answer_prompt_template = 'I will give you several history chats between you and a user. Please answer the question based on the relevant chat history.\n\n\nHistory Chats:\n\n{}\n\nCurrent Date: {}\nQuestion: {}\nAnswer:'
+                session_prompt_template = 'I will give you several history chats between you and a user. Please answer the question based on the relevant chat history.\n\n\nHistory Chats:\n\n{}'
+                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer:'
         elif merge_key_expansion_into_value == 'merge':
             if cot:
-                answer_prompt_template = 'I will give you several history chats between you and a user, as well as the relevant user facts extracted from the chat history. Please answer the question based on the relevant chat history and the user facts. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}\n\nCurrent Date: {}\nQuestion: {}\nAnswer (step by step):'
+                session_prompt_template = 'I will give you several history chats between you and a user, as well as the relevant user facts extracted from the chat history. Please answer the question based on the relevant chat history and the user facts. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}'
+                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer (step by step):'
             else:
-                answer_prompt_template = 'I will give you several history chats between you and a user, as well as the relevant user facts extracted from the chat history. Please answer the question based on the relevant chat history and the user facts\n\n\nHistory Chats:\n\n{}\n\nCurrent Date: {}\nQuestion: {}\nAnswer:'
+                session_prompt_template = 'I will give you several history chats between you and a user, as well as the relevant user facts extracted from the chat history. Please answer the question based on the relevant chat history and the user facts\n\n\nHistory Chats:\n\n{}'
+                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer:'
         elif merge_key_expansion_into_value == 'replace':
             if cot:
-                answer_prompt_template = 'I will give you several facts extracted from history chats between you and a user. Please answer the question based on the relevant facts. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}\n\nCurrent Date: {}\nQuestion: {}\nAnswer (step by step):'
+                session_prompt_template = 'I will give you several facts extracted from history chats between you and a user. Please answer the question based on the relevant facts. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}'
+                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer (step by step):'
             else:
-                answer_prompt_template = 'I will give you several facts extracted from history chats between you and a user. Please answer the question based on the relevant facts.\n\n\nHistory Chats:\n\n{}\n\nCurrent Date: {}\nQuestion: {}\nAnswer:'
+                session_prompt_template = 'I will give you several facts extracted from history chats between you and a user. Please answer the question based on the relevant facts.\n\n\nHistory Chats:\n\n{}'
+                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer:'
         else:
             raise NotImplementedError
         
@@ -265,7 +272,8 @@ def prepare_prompt(entry, retriever_type, topk_context: int, useronly: bool, his
 
     assert retriever_type == "no-retrieval" or history_string != ""
     if retriever_type == "no-retrieval":
-        prompt = answer_prompt_template.format(question_string)
+        session_prompt = ""  # No session content for no-retrieval
+        question_prompt = question_prompt_template.format(question_string)
     else:
         # truncate history string
         if tokenizer_backend == 'openai':
@@ -282,9 +290,10 @@ def prepare_prompt(entry, retriever_type, topk_context: int, useronly: bool, his
                 history_string = tokenizer.decode(encoded_input['input_ids'][0], skip_special_tokens=True)
         else:
             raise NotImplementedError
-        prompt = answer_prompt_template.format(history_string, question_date_string, question_string)
+        session_prompt = session_prompt_template.format(history_string)
+        question_prompt = question_prompt_template.format(question_date_string, question_string)
 
-    return prompt
+    return session_prompt, question_prompt
     
 
 @backoff.on_exception(backoff.constant, (openai.RateLimitError), 
@@ -359,13 +368,13 @@ def main(args):
         max_retrieval_length = model_max_length - gen_length - 1000
 
         if args.con == 'true':
-            prompt = prepare_prompt(entry, args.retriever_type, args.topk_context, args.useronly=='true',
+            session_prompt, question_prompt = prepare_prompt(entry, args.retriever_type, args.topk_context, args.useronly=='true',
                                     args.history_format, args.cot=='true', 
                                     tokenizer=tokenizer, tokenizer_backend=tokenizer_backend, max_retrieval_length=max_retrieval_length,
                                     merge_key_expansion_into_value=args.merge_key_expansion_into_value,
                                     con=True, con_client=client, con_model=args.model_name)
         else:
-            prompt = prepare_prompt(entry, args.retriever_type, args.topk_context, args.useronly=='true',
+            session_prompt, question_prompt = prepare_prompt(entry, args.retriever_type, args.topk_context, args.useronly=='true',
                                     args.history_format, args.cot=='true', 
                                     tokenizer=tokenizer, tokenizer_backend=tokenizer_backend, max_retrieval_length=max_retrieval_length,
                                     merge_key_expansion_into_value=args.merge_key_expansion_into_value)
@@ -373,11 +382,15 @@ def main(args):
         try:
             print(json.dumps({'question_id': entry['question_id'], 'question': entry['question'], 'answer': entry['answer']}, indent=4), flush=True)
             
+            # Construct messages list - add session message if not empty
+            messages = []
+            if session_prompt.strip():  # Only add session message if there's content
+                messages.append({"role": "user", "content": session_prompt})
+            messages.append({"role": "user", "content": question_prompt})
+            
             kwargs = {
                 'model': args.model_name,
-                'messages':[
-                    {"role": "user", "content": prompt}
-                ],
+                'messages': messages,
                 'n': 1,
                 'temperature': 0,
                 'max_tokens': gen_length,

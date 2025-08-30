@@ -99,7 +99,7 @@ python3 run_generation.py \
     --topk_context 1_000_000_000 \
     --history_format "json" \
     --useronly "false" \
-    --cot "true" \
+    --cot "false" \
     --out_file_suffix "_polychat_test_${MODEL_ALIAS}" \
     --gen_length 200
 
