@@ -1,4 +1,5 @@
 import sys
+import os
 import json
 from tqdm import tqdm
 import openai
@@ -10,6 +11,10 @@ from datetime import datetime, timedelta
 import argparse
 from transformers import AutoTokenizer
 import tiktoken
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def parse_args():
@@ -292,9 +297,19 @@ def main(args):
     # setup
     if args.openai_organization:
         openai.organization = args.openai_organization
+    
+    # Use API key from environment if available, otherwise use command line argument
+    api_key = os.getenv('POLYCHAT_API_KEY') or args.openai_key
+    
+    # Set up default headers
+    default_headers = {}
+    if args.model_alias.endswith('-mem'):
+        default_headers['x-polychat-memory'] = 'on'
+    
     client = OpenAI(
-        api_key=args.openai_key,
+        api_key=api_key,
         base_url=args.openai_base_url,
+        default_headers=default_headers if default_headers else None,
     )
 
     try:
@@ -316,6 +331,7 @@ def main(args):
         'gpt-4o': 128000,
         'gpt-4o-2024-08-06': 128000,
         "gpt-4o-mini-2024-07-18": 128000,
+        'GPT-4o-mini': 128000,
         'meta-llama/Meta-Llama-3.1-8B-Instruct': 128000,
         'meta-llama/Meta-Llama-3.1-70B-Instruct': 128000,
         'microsoft/Phi-3-medium-128k-instruct': 120000,
@@ -367,14 +383,32 @@ def main(args):
                 'max_tokens': gen_length,
             }
             completion = chat_completions_with_backoff(client,**kwargs) 
+            
+            # Check if completion is valid and has the expected structure
+            if completion is None:
+                print('Error: completion is None, skipping entry', flush=True)
+                continue
+                
+            if not hasattr(completion, 'choices') or not completion.choices:
+                print('Error: completion has no choices, skipping entry', flush=True)
+                continue
+                
             answer = completion.choices[0].message.content.strip()
 
-            total_prompt_tokens += completion.usage.prompt_tokens
-            total_completion_tokens += completion.usage.completion_tokens
+            # Safely access usage statistics
+            if hasattr(completion, 'usage') and completion.usage is not None:
+                if hasattr(completion.usage, 'prompt_tokens'):
+                    total_prompt_tokens += completion.usage.prompt_tokens
+                if hasattr(completion.usage, 'completion_tokens'):
+                    total_completion_tokens += completion.usage.completion_tokens
+            else:
+                print('Warning: completion.usage is None or missing for question_id:', entry['question_id'], flush=True)
+                
             print(json.dumps({'hypothesis': answer}), flush=True)
             print(json.dumps({'question_id': entry['question_id'], 'hypothesis': answer}), file=out_f, flush=True)
         except Exception as e:
             print('One exception captured', repr(e))
+            print('Error details for question_id:', entry.get('question_id', 'unknown'), flush=True)
             continue
 
     print('Total prompt tokens:', total_prompt_tokens)

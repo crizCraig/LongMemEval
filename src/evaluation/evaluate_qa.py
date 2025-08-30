@@ -6,11 +6,17 @@ import backoff
 import openai
 from openai import OpenAI
 import numpy as np
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 model_zoo = {
     'llama-3.1-70b-instruct': ('meta-llama/Meta-Llama-3.1-70B-Instruct', 'local'),
     'gpt-4o-mini': ('gpt-4o-mini-2024-07-18', 'openai'),
+    'gpt-4o-mini-polychat': ('GPT-4o-mini', 'polychat'),
+    'gpt-4o-mini-polychat-mem': ('GPT-4o-mini', 'polychat-mem'),
     'gpt-4o': ('gpt-4o-2024-08-06', 'openai'),
 }
 
@@ -63,13 +69,22 @@ if __name__ == '__main__':
         openai.organization = os.getenv('OPENAI_ORGANIZATION')
         openai_api_key = os.getenv('OPENAI_API_KEY')
         openai_api_base = None
+        default_headers = None
+    elif metric_model_source.startswith('polychat'):
+        openai_api_key = os.environ['POLYCHAT_API_KEY']
+        openai_api_base = 'https://polychat.co/api'
+        default_headers = {}
+        if metric_model_source.endswith('mem'):
+            default_headers['x-polychat-memory'] = 'on'
     else:
         openai_api_key = "EMPTY"
         openai_api_base = "http://localhost:8001/v1"
+        default_headers = None
     
     metric_client = OpenAI(
         api_key=openai_api_key,
         base_url=openai_api_base,
+        default_headers=default_headers,
     )
 
     try:
