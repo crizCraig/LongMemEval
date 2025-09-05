@@ -59,24 +59,24 @@ def prepare_prompt(entry, retriever_type, topk_context: int, useronly: bool, his
         if merge_key_expansion_into_value is None or merge_key_expansion_into_value == 'none':
             if cot:
                 session_prompt_template = 'I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}'
-                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer (step by step):'
+                question_prompt_template = 'Question: {}\nAnswer (step by step):'
             else:
                 session_prompt_template = 'I will give you several history chats between you and a user. Please answer the question based on the relevant chat history.\n\n\nHistory Chats:\n\n{}'
-                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer:'
+                question_prompt_template = 'Question: {}'
         elif merge_key_expansion_into_value == 'merge':
             if cot:
                 session_prompt_template = 'I will give you several history chats between you and a user, as well as the relevant user facts extracted from the chat history. Please answer the question based on the relevant chat history and the user facts. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}'
-                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer (step by step):'
+                question_prompt_template = 'Question: {}\nAnswer (step by step):'
             else:
                 session_prompt_template = 'I will give you several history chats between you and a user, as well as the relevant user facts extracted from the chat history. Please answer the question based on the relevant chat history and the user facts\n\n\nHistory Chats:\n\n{}'
-                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer:'
+                question_prompt_template = 'Question: {}'
         elif merge_key_expansion_into_value == 'replace':
             if cot:
                 session_prompt_template = 'I will give you several facts extracted from history chats between you and a user. Please answer the question based on the relevant facts. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n{}'
-                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer (step by step):'
+                question_prompt_template = 'Question: {}\nAnswer (step by step):'
             else:
                 session_prompt_template = 'I will give you several facts extracted from history chats between you and a user. Please answer the question based on the relevant facts.\n\n\nHistory Chats:\n\n{}'
-                question_prompt_template = 'Current Date: {}\nQuestion: {}\nAnswer:'
+                question_prompt_template = 'Question: {}'
         else:
             raise NotImplementedError
         
@@ -291,7 +291,7 @@ def prepare_prompt(entry, retriever_type, topk_context: int, useronly: bool, his
         else:
             raise NotImplementedError
         session_prompt = session_prompt_template.format(history_string)
-        question_prompt = question_prompt_template.format(question_date_string, question_string)
+        question_prompt = question_prompt_template.format(question_string)
 
     return session_prompt, question_prompt
     
