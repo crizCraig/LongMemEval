@@ -290,7 +290,13 @@ def prepare_prompt(entry, retriever_type, topk_context: int, useronly: bool, his
                 history_string = tokenizer.decode(encoded_input['input_ids'][0], skip_special_tokens=True)
         else:
             raise NotImplementedError
-        session_prompt = session_prompt_template.format(history_string)
+        # session_prompt = session_prompt_template.format(history_string) + f"\n\Current Date: {question_date_string}"
+        # session_prompt = session_prompt_template.format(history_string) + f"\n\Today: {question_date_string}"
+        # session_prompt = session_prompt_template.format(history_string) + f"\n\The current date: {question_date_string}"
+        # session_prompt = session_prompt_template.format(history_string) + f"\n\Date today: {question_date_string}"
+        # session_prompt = session_prompt_template.format(history_string) + f"\n\Today is: {question_date_string}"
+        # session_prompt = session_prompt_template.format(history_string) + f"\nToday's date: {question_date_string}"
+        session_prompt = session_prompt_template.format(history_string) + f"\nToday's date is: {question_date_string}"
         question_prompt = question_prompt_template.format(question_string)
 
     return session_prompt, question_prompt
