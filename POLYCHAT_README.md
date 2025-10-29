@@ -1,4 +1,20 @@
-# Polychat Integration Scripts
+# LongMemEval for PolyChat
+
+## Usage 
+
+### Sanity test
+./run_simple_generation.sh --mem --test
+
+
+### Run with memory
+./run_simple_generation.sh --mem
+
+
+
+e.g.
+./run_simple_evaluation.sh /Users/craigquiter/src/LongMemEval/data/longmemeval_s.json_testlog_top1000000000context_jsonformat_useronlyfalse_20250831-1655_polychat_test_gpt-4o-mini-polychat-mem
+
+LLM-gen readme:
 
 ## 🚀 Unified Experiment Script
 
