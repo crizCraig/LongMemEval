@@ -15,8 +15,6 @@ load_dotenv()
 model_zoo = {
     'llama-3.1-70b-instruct': ('meta-llama/Meta-Llama-3.1-70B-Instruct', 'local'),
     'gpt-4o-mini': ('gpt-4o-mini-2024-07-18', 'openai'),
-    'gpt-4o-mini-polychat': ('GPT-4o-mini', 'polychat'),
-    'gpt-4o-mini-polychat-mem': ('GPT-4o-mini', 'polychat-mem'),
     'gpt-4o': ('gpt-4o-2024-08-06', 'openai'),
 }
 
